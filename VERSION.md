@@ -1,5 +1,18 @@
 # Version History
 
+## 4.1.1.7
+
+* fix KML export for content with more than one item with `null` name
+* fix potential `NullPointerException` in contacts
+
+## 4.1.1.6
+
+* Handle potential Security Exception on file import
+
+## 4.1.1.5
+
+* Handle potential `NullPointerException` in Route Navigation
+
 ## 4.1.1.4
 
 * Android 11 (API Level 30) compatibility; add `PluginSpinner.isUIContext`
