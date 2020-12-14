@@ -1,5 +1,29 @@
 # Version History
 
+## 4.1.1.16
+
+* Handle potential WindowManager$BadTokenException in TLSUtils
+* Handle potential NullPointerException in geofence
+* Reverse intepretation of Ellipse azimuth property when recomputing the geometry
+* Handle potential NullPointerException in AddNetInfoActivity
+
+## 4.1.1.15
+
+* Perform a double reflection to bypass google security for blacklisted reflection
+* Handle potential NullPointerException in geofence
+* Handle case where system display settings activity may not exist
+* Do not delete all persisted actionbar layouts during a save, only delete the actionbar layout that has been deleted.
+* Handle potential BadTokenException in TileButtonDialog
+
+## 4.1.1.14
+
+* Relax undocumented check to mitigate potential NullPointerException
+
+## 4.1.1.12
+
+* Potential SecurityException on file import
+* Potential NullPointerException in ContactLocationView
+
 ## 4.1.1.11
 
 * Potential NullPointerException in bloodhound
