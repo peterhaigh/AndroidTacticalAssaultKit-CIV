@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.atakmap.util.zip.IoUtils;
 import opencsv.CSVReader;
 
 public class VehicleBlock {
@@ -113,16 +114,8 @@ public class VehicleBlock {
         } catch (IOException e) {
             Log.e(TAG, "error: ", e);
         } finally {
-            try {
-                if (in != null)
-                    in.close();
-            } catch (IOException ignored) {
-            }
-            try {
-                if (out != null)
-                    out.close();
-            } catch (IOException ignored) {
-            }
+            IoUtils.close(in);
+            IoUtils.close(out);
         }
         for (String subDir : subDirs)
             copyAssets(assets, subDir);
@@ -271,9 +264,10 @@ public class VehicleBlock {
         PointF lp = null;
         double la = Double.NaN;
         CSVReader csv = null;
+        InputStream is = null;
         try {
-            InputStreamReader isr = new InputStreamReader(
-                    IOProviderFactory.getInputStream(_file));
+            is = IOProviderFactory.getInputStream(_file);
+            InputStreamReader isr = new InputStreamReader(is);
             csv = new CSVReader(isr);
             //Skip the header
             csv.readNext();
@@ -338,6 +332,11 @@ public class VehicleBlock {
             try {
                 if (csv != null)
                     csv.close();
+            } catch (IOException ignored) {
+            }
+            try {
+                if (is != null)
+                    is.close();
             } catch (IOException ignored) {
             }
         }

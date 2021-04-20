@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -512,18 +513,15 @@ public class NetworkDeviceManager {
         try {
             File f = new File(directory, "network.map");
             if (IOProviderFactory.exists(f)) {
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(
-                                IOProviderFactory.getInputStream(f)));
-                try {
+                try(InputStream is = IOProviderFactory.getInputStream(f);
+                    InputStreamReader isr = new InputStreamReader(is);
+                    BufferedReader br = new BufferedReader(isr)) {
                     String line;
                     while ((line = br.readLine()) != null) {
                         NetworkDevice nd = NetworkDevice.fromCSVLine(line);
                         if (nd != null)
                             devices.add(nd);
                     }
-                } finally {
-                    br.close();
                 }
             }
         } catch (IOException ioe) {
@@ -559,8 +557,7 @@ public class NetworkDeviceManager {
                 }
 
             File f = new File(directory, "network.map");
-            FileWriter bw = IOProviderFactory.getFileWriter(f);
-            try {
+            try (FileWriter bw = IOProviderFactory.getFileWriter(f)) {
                 bw.write("#network map file created " + new Date() + "\r\n");
                 bw.write("#type values  " + NetworkDevice.Type.getStringList()
                         + "\r\n");
@@ -569,8 +566,6 @@ public class NetworkDeviceManager {
                 for (NetworkDevice n : devices) {
                     bw.write(n.toCSVLine() + "\r\n");
                 }
-            } finally {
-                bw.close();
             }
         } catch (IOException ie) {
             return false;

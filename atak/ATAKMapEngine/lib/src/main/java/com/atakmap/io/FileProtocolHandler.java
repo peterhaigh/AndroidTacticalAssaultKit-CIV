@@ -1,6 +1,7 @@
 package com.atakmap.io;
 
 import com.atakmap.coremap.io.IOProviderFactory;
+import com.atakmap.util.zip.IoUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,18 +15,24 @@ import java.util.Collection;
  */
 public class FileProtocolHandler implements ProtocolHandler {
 
+    private static final String TAG = "FileProtocolHandler";
+
     @Override
     public UriFactory.OpenResult handleURI(String uri) {
         File file = getFile(uri);
         if (file == null)
             return null;
 
+        UriFactory.OpenResult result = null;
         try {
-            UriFactory.OpenResult result = new UriFactory.OpenResult();
+            result = new UriFactory.OpenResult();
             result.inputStream = openStream(file);
             result.contentLength = IOProviderFactory.length(file);
             return result;
         } catch (Exception e) {
+            if(result != null){
+                IoUtils.close(result.inputStream);
+            }
             return null;
         }
     }

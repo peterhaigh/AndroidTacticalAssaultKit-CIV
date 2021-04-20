@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import com.atakmap.coremap.locale.LocaleUtil;
 import com.atakmap.coremap.maps.coords.GeoPointMetaData;
@@ -430,14 +431,13 @@ public class ImageAdapter2 extends BaseAdapter {
                         synchronized (lock) {
                             BitmapFactory.Options opts = new BitmapFactory.Options();
                             opts.inJustDecodeBounds = true;
-                            try {
-                                BitmapFactory.decodeStream(
-                                        IOProviderFactory
-                                                .getInputStream(new File(bmpFile
-                                                        .getAbsolutePath())),
+                            try(InputStream is = IOProviderFactory
+                                    .getInputStream(new File(bmpFile
+                                            .getAbsolutePath()))) {
+                                BitmapFactory.decodeStream(is,
                                         null, opts);
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                Log.e(TAG, "error encountered", e);
                             }
 
                             int sample = Math.max(1, (opts.outWidth / _width));
@@ -569,16 +569,12 @@ public class ImageAdapter2 extends BaseAdapter {
 
     private File _readLink(File linkFile) {
         File link = null;
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(
-                    IOProviderFactory.getInputStream(linkFile)));
-            try {
-                String line = br.readLine();
-                link = new File(
-                        FileSystemUtils.sanitizeWithSpacesAndSlashes(line));
-            } finally {
-                br.close();
-            }
+        try(InputStream is = IOProviderFactory.getInputStream(linkFile);
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr)) {
+            String line = br.readLine();
+            link = new File(
+                    FileSystemUtils.sanitizeWithSpacesAndSlashes(line));
         } catch (IOException ex) {
             Log.e(TAG, "error: ", ex);
         }

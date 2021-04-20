@@ -10,19 +10,19 @@ import com.atakmap.android.http.rest.operation.NetworkOperation;
 import com.atakmap.android.importfiles.resource.RemoteResource;
 import com.atakmap.android.importfiles.task.ImportFileTask;
 import com.atakmap.android.importfiles.task.ImportRemoteFileTask;
-import com.atakmap.android.util.NotificationUtil;
 import com.atakmap.app.R;
 import com.atakmap.coremap.filesystem.FileSystemUtils;
 import com.atakmap.coremap.io.IOProviderFactory;
 import com.atakmap.coremap.log.Log;
 import com.atakmap.spatial.file.SpatialDbContentSource;
+import com.atakmap.util.zip.IoUtils;
 import com.foxykeep.datadroid.requestmanager.Request;
 import com.foxykeep.datadroid.requestmanager.RequestManager;
-import com.foxykeep.datadroid.requestmanager.RequestManager.RequestListener;
 
 import com.atakmap.android.http.rest.request.GetFileRequest;
 
 import com.atakmap.net.AtakAuthenticationHandlerHTTP;
+
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -36,16 +36,9 @@ import java.io.File;
  * 
  * 
  */
-public class ImportFileDownloader implements RequestListener {
+public class ImportFileDownloader extends NetworkLinkDownloader {
 
     protected static final String TAG = "ImportFileDownloader";
-
-    /**
-     * Core class members
-     */
-    private final Context _context;
-
-    private int curNotificationId = 83000;
 
     /**
      * See <code>ImportFileTask</code>
@@ -59,12 +52,8 @@ public class ImportFileDownloader implements RequestListener {
      * @param flags
      */
     public ImportFileDownloader(final Context context, final int flags) {
-        _context = context;
+        super(context, 83000);
         _flags = flags;
-    }
-
-    public synchronized int getNotificationId() {
-        return curNotificationId++;
     }
 
     /**
@@ -72,20 +61,22 @@ public class ImportFileDownloader implements RequestListener {
      * 
      * @param resource the resource to be downloaded
      */
-    public void download(final RemoteResource resource) {
-
-        download(resource, getNotificationId());
-    }
-
-    public void download(final RemoteResource resource,
-            final int notificationId) {
-
+    @Override
+    public void download(final RemoteResource resource, boolean showNotifications) {
         // Note the type specific import sorters will ensure a file has the proper extension
-        RemoteResourceRequest request = new RemoteResourceRequest(
+        int notificationId = getNotificationId();
+        RemoteResourceRequest request;
+        String path = resource.getLocalPath();
+        if (!FileSystemUtils.isEmpty(path)) {
+            File f = new File(path);
+            request = new RemoteResourceRequest(resource, f.getName(),
+                    f.getParent(), notificationId, showNotifications);
+        } else
+            request = new RemoteResourceRequest(
                 resource, FileSystemUtils
                         .getItem(FileSystemUtils.TMP_DIRECTORY)
                         .getAbsolutePath(),
-                notificationId);
+                notificationId, showNotifications);
 
         // notify user
         Log.d(TAG,
@@ -94,22 +85,9 @@ public class ImportFileDownloader implements RequestListener {
 
         if (ImportFileTask.checkFlag(_flags,
                 ImportRemoteFileTask.FlagNotifyUserSuccess)) {
-            NotificationUtil
-                    .getInstance()
-                    .postNotification(
-                            request.getNotificationId(),
-                            R.drawable.download_remote_file,
-                            NotificationUtil.BLUE,
-                            _context.getString(
-                                    R.string.importmgr_remote_file_download_started),
-                            String.format(
-                                    _context.getString(
-                                            R.string.importmgr_downloading_url),
-                                    request.getUrl()),
-                            String.format(
-                                    _context.getString(
-                                            R.string.importmgr_downloading_url),
-                                    request.getUrl()));
+            postNotification(request, R.drawable.download_remote_file,
+                    getString(R.string.importmgr_remote_file_download_started),
+                    getString(R.string.importmgr_downloading_url, request.getUrl()));
         }
 
         // Kick off async HTTP request to get file
@@ -120,10 +98,12 @@ public class ImportFileDownloader implements RequestListener {
         Thread t = new Thread() {
             public void run() {
                 Log.d(TAG, "start download... ");
+                final String urlStr = r.getUrl();
                 try {
                     GetFileRequest request = r;
 
-                    URL url = new URL(request.getUrl());
+                    _downloading.add(urlStr);
+                    URL url = new URL(urlStr);
                     URLConnection conn = url.openConnection();
                     conn.setRequestProperty("User-Agent", "TAK");
                     conn.setUseCaches(true);
@@ -146,10 +126,9 @@ public class ImportFileDownloader implements RequestListener {
 
                     File fout = new File(request.getDir(),
                             request.getFileName());
-                    FileOutputStream fos = IOProviderFactory
-                            .getOutputStream(fout);
 
-                    try {
+                    try(FileOutputStream fos = IOProviderFactory
+                            .getOutputStream(fout)) {
                         FileSystemUtils.copy(input, fos);
                         Log.d(TAG, "success: " + request.getFileName());
                     } catch (Exception e) {
@@ -158,16 +137,16 @@ public class ImportFileDownloader implements RequestListener {
                                 NetworkOperationManager.REQUEST_TYPE_GET_FILE),
                                 new RequestManager.ConnectionError(900,
                                         "unable to write download"));
+                    } finally {
+                        IoUtils.close(input);
                     }
-
                     Bundle b = new Bundle();
                     b.putParcelable(GetFileOperation.PARAM_GETFILE, request);
                     onRequestFinished(new Request(
                             NetworkOperationManager.REQUEST_TYPE_GET_FILE), b);
 
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    Log.d(TAG, "error", e);
+                    Log.e(TAG, "error encountered", e);
                     onRequestConnectionError(new Request(
                             NetworkOperationManager.REQUEST_TYPE_GET_FILE),
                             new RequestManager.ConnectionError(-1,
@@ -175,6 +154,7 @@ public class ImportFileDownloader implements RequestListener {
 
                 }
                 Log.d(TAG, "end download... ");
+                _downloading.remove(urlStr);
             }
         };
         t.start();
@@ -193,18 +173,10 @@ public class ImportFileDownloader implements RequestListener {
             if (resultData == null) {
                 Log.e(TAG,
                         "File Transfer Download Failed - Unable to obtain results");
-                NotificationUtil
-                        .getInstance()
-                        .postNotification(
-                                SpatialDbContentSource.getNotificationId(),
-                                R.drawable.ic_network_error_notification_icon,
-                                NotificationUtil.RED,
-                                _context.getString(
-                                        R.string.importmgr_remote_file_download_failed),
-                                _context.getString(
-                                        R.string.importmgr_unable_to_obtain_results),
-                                _context.getString(
-                                        R.string.importmgr_unable_to_obtain_results));
+                postNotification(SpatialDbContentSource.getNotificationId(),
+                        R.drawable.ic_network_error_notification_icon,
+                        R.string.importmgr_remote_file_download_failed,
+                        R.string.importmgr_unable_to_obtain_results);
                 return;
             }
 
@@ -214,18 +186,10 @@ public class ImportFileDownloader implements RequestListener {
             if (initialRequest == null || !initialRequest.isValid()) {
                 Log.e(TAG,
                         "File Transfer Download Failed - Unable to parse request");
-                NotificationUtil
-                        .getInstance()
-                        .postNotification(
-                                SpatialDbContentSource.getNotificationId(),
-                                R.drawable.ic_network_error_notification_icon,
-                                NotificationUtil.RED,
-                                _context.getString(
-                                        R.string.importmgr_remote_file_download_failed),
-                                _context.getString(
-                                        R.string.importmgr_unable_to_parse_request),
-                                _context.getString(
-                                        R.string.importmgr_unable_to_parse_request));
+                postNotification(SpatialDbContentSource.getNotificationId(),
+                        R.drawable.ic_network_error_notification_icon,
+                        R.string.importmgr_remote_file_download_failed,
+                        R.string.importmgr_unable_to_parse_request);
                 return;
             }
 
@@ -234,18 +198,10 @@ public class ImportFileDownloader implements RequestListener {
             if (!FileSystemUtils.isFile(downloadedFile)) {
                 Log.e(TAG,
                         "Remote File Download Failed - Failed to create local file");
-                NotificationUtil
-                        .getInstance()
-                        .postNotification(
-                                SpatialDbContentSource.getNotificationId(),
-                                R.drawable.ic_network_error_notification_icon,
-                                NotificationUtil.RED,
-                                _context.getString(
-                                        R.string.importmgr_remote_file_download_failed),
-                                _context.getString(
-                                        R.string.importmgr_failed_to_create_local_file),
-                                _context.getString(
-                                        R.string.importmgr_failed_to_create_local_file));
+                postNotification(initialRequest,
+                        R.drawable.ic_network_error_notification_icon,
+                                getString(R.string.importmgr_remote_file_download_failed),
+                                getString(R.string.importmgr_failed_to_create_local_file));
                 return;
             }
 
@@ -255,8 +211,11 @@ public class ImportFileDownloader implements RequestListener {
             ImportRemoteFileTask task = new ImportRemoteFileTask(_context,
                     initialRequest.getResource(),
                     initialRequest.getNotificationId());
-            task.addFlag(ImportFileTask.FlagSkipDeleteOnMD5Match
-                    | ImportFileTask.FlagKMZStrictMode | _flags);
+            task.addFlag(ImportFileTask.FlagSkipDeleteOnMD5Match | _flags);
+            if (!initialRequest.showNotifications()) {
+                task.removeFlag(ImportFileTask.FlagShowNotificationsDuringImport);
+                task.removeFlag(ImportRemoteFileTask.FlagNotifyUserSuccess);
+            }
             task.execute(downloadedFile.getAbsolutePath());
         } else {
             Log.w(TAG,
@@ -271,59 +230,27 @@ public class ImportFileDownloader implements RequestListener {
         Log.e(TAG, detail);
 
         Log.e(TAG, "File Transfer Download Failed - Request Connection Error");
-        NotificationUtil
-                .getInstance()
-                .postNotification(
-                        SpatialDbContentSource.getNotificationId(),
-                        R.drawable.ic_network_error_notification_icon,
-                        NotificationUtil.RED,
-                        _context.getString(
-                                R.string.importmgr_remote_file_download_failed),
-                        String.format(
-                                _context.getString(
-                                        R.string.importmgr_check_your_url),
-                                detail),
-                        String.format(
-                                _context.getString(
-                                        R.string.importmgr_check_your_url),
-                                detail));
+        postNotification(SpatialDbContentSource.getNotificationId(),
+                R.drawable.ic_network_error_notification_icon,
+                getString(R.string.importmgr_remote_file_download_failed),
+                getString(R.string.importmgr_check_your_url, detail));
     }
 
     @Override
     public void onRequestDataError(Request request) {
         Log.e(TAG, "File Transfer Download Failed - Request Data Error");
-        NotificationUtil
-                .getInstance()
-                .postNotification(
-                        SpatialDbContentSource.getNotificationId(),
-                        R.drawable.ic_network_error_notification_icon,
-                        NotificationUtil.RED,
-                        _context.getString(
-                                R.string.importmgr_remote_file_download_failed),
-                        _context.getString(
-                                R.string.importmgr_request_data_error),
-                        _context.getString(
-                                R.string.importmgr_request_data_error));
+        postNotification(SpatialDbContentSource.getNotificationId(),
+                R.drawable.ic_network_error_notification_icon,
+                R.string.importmgr_remote_file_download_failed,
+                R.string.importmgr_request_data_error);
     }
 
     @Override
     public void onRequestCustomError(Request request, Bundle resultData) {
         Log.e(TAG, "File Transfer Download Failed - Request Custom Error");
-        NotificationUtil
-                .getInstance()
-                .postNotification(
-                        SpatialDbContentSource.getNotificationId(),
-                        R.drawable.ic_network_error_notification_icon,
-                        NotificationUtil.RED,
-                        _context.getString(
-                                R.string.importmgr_remote_file_download_failed),
-                        _context.getString(
-                                R.string.importmgr_request_custom_error),
-                        _context.getString(
-                                R.string.importmgr_request_custom_error));
-    }
-
-    public void shutdown() {
-        // TODO what to do? Shutdown RequestService? cancel any ongoing downloads?
+        postNotification(SpatialDbContentSource.getNotificationId(),
+                R.drawable.ic_network_error_notification_icon,
+                R.string.importmgr_remote_file_download_failed,
+                R.string.importmgr_request_custom_error);
     }
 }

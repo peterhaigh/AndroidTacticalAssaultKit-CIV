@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -61,9 +62,8 @@ public class ImportAlternateContactSort extends ImportResolver {
         if (!super.match(file))
             return false;
 
-        try {
-            return isContact(IOProviderFactory.getInputStream(file),
-                    _charBuffer);
+        try(InputStream is = IOProviderFactory.getInputStream(file)) {
+            return isContact(is, _charBuffer);
         } catch (IOException e) {
             Log.e(TAG,
                     "Error checking contact info: " + file.getAbsolutePath(),
@@ -151,9 +151,8 @@ public class ImportAlternateContactSort extends ImportResolver {
         SharedPreferences prefs = PreferenceManager
                 .getDefaultSharedPreferences(MapView.getMapView().getContext());
 
-        BufferedReader br = null;
-        try {
-            br = new BufferedReader(IOProviderFactory.getFileReader(file));
+        try (Reader r = IOProviderFactory.getFileReader(file);
+             BufferedReader br = new BufferedReader(r)) {
             String line;
             String[] parse;
             while ((line = br.readLine()) != null) {
@@ -220,9 +219,6 @@ public class ImportAlternateContactSort extends ImportResolver {
                             + ", for callsign: " + myCallsign);
                 }
             }
-        } finally {
-            if (br != null)
-                br.close();
         }
     }
 

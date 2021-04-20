@@ -26,12 +26,14 @@ import com.atakmap.app.R;
 import com.atakmap.coremap.filesystem.FileSystemUtils;
 import com.atakmap.coremap.io.IOProviderFactory;
 import com.atakmap.coremap.log.Log;
+import com.atakmap.util.zip.IoUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -401,9 +403,9 @@ public class IconsetAdapter extends BaseAdapter {
             }
 
             ZipOutputStream zos = null;
-            try {
-                FileOutputStream fos = IOProviderFactory.getOutputStream(zip);
-                zos = new ZipOutputStream(new BufferedOutputStream(fos));
+            try(FileOutputStream fos = IOProviderFactory.getOutputStream(zip);
+                BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+                zos = new ZipOutputStream(bos);
 
                 //add iconset.xml
                 addFile(zos, null, ImportUserIconSetSort.ICONSET_XML,
@@ -436,15 +438,8 @@ public class IconsetAdapter extends BaseAdapter {
                                 + iconset.getName());
                 return false;
             } finally {
-                if (zos != null) {
-                    try {
-                        zos.close();
-                    } catch (Exception e) {
-                        Log.w(TAG,
-                                "Failed to close iconset: "
-                                        + zip.getAbsolutePath());
-                    }
-                }
+                IoUtils.close(zos,TAG,"Failed to close iconset: "
+                        + zip.getAbsolutePath());
             }
         }
     }

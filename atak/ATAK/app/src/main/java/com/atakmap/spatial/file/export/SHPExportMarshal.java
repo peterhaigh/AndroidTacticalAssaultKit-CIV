@@ -13,6 +13,7 @@ import com.atakmap.coremap.io.IOProviderFactory;
 import com.atakmap.coremap.log.Log;
 import com.atakmap.spatial.file.ShapefileSpatialDb;
 import com.atakmap.spatial.file.export.OGRFeatureExportWrapper.NamedGeometry;
+import com.atakmap.util.zip.IoUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -91,7 +92,7 @@ public class SHPExportMarshal extends OGRExportMarshal {
             return null;
         }
 
-        if (baseSHP.getAbsolutePath().endsWith(".zip")) {
+        if (FileSystemUtils.checkExtension(baseSHP, "zip")) {
             Log.d(TAG,
                     "Shapefile already zipped: " + baseSHP.getAbsolutePath());
             return baseSHP;
@@ -102,8 +103,7 @@ public class SHPExportMarshal extends OGRExportMarshal {
         File shpz = new File(baseSHP.getAbsolutePath() + ".zip");
         if (files != null) {
             ZipOutputStream zos = null;
-            try {
-                FileOutputStream fos = IOProviderFactory.getOutputStream(shpz);
+            try(FileOutputStream fos = IOProviderFactory.getOutputStream(shpz)) {
                 zos = new ZipOutputStream(new BufferedOutputStream(fos));
 
                 //loop and add all files
@@ -114,15 +114,8 @@ public class SHPExportMarshal extends OGRExportMarshal {
                 Log.e(TAG, "Failed to create SHPZ file", e);
                 throw new IOException(e);
             } finally {
-                if (zos != null) {
-                    try {
-                        zos.close();
-                    } catch (Exception e) {
-                        Log.w(TAG,
-                                "Failed to close SHPZ: "
-                                        + shpz.getAbsolutePath());
-                    }
-                }
+                IoUtils.close(zos,TAG,"Failed to close SHPZ: "
+                        + shpz.getAbsolutePath());
             }
         }
 

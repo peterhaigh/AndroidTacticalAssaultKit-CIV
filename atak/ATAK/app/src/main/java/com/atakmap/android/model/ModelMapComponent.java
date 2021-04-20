@@ -71,7 +71,10 @@ import com.atakmap.map.layer.opengl.GLLayerFactory;
 import com.atakmap.map.layer.opengl.GLLayerSpi2;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.SortedSet;
@@ -255,24 +258,22 @@ public class ModelMapComponent extends AbstractMapComponent {
         File versionFile = FileSystemUtils
                 .getItem("Databases/models.db/catalog.version");
         boolean reimport = true;
-        try {
-            try (RandomAccessFile ver = IOProviderFactory
-                    .getRandomAccessFile(versionFile, "rw")) {
-                do {
-                    // if there's at least 4 bytes, compare the version
-                    if (ver.length() >= 4) {
-                        final int localVersion = ver.readInt();
-                        // if up to date, no reimport; leave alone
-                        if (localVersion >= SYNC_VERSION) {
-                            reimport = false;
-                            break;
-                        }
+        try(RandomAccessFile ver = IOProviderFactory
+                .getRandomAccessFile(versionFile, "rw")) {
+            do {
+                // if there's at least 4 bytes, compare the version
+                if (ver.length() >= 4) {
+                    final int localVersion = ver.readInt();
+                    // if up to date, no reimport; leave alone
+                    if (localVersion >= SYNC_VERSION) {
+                        reimport = false;
+                        break;
                     }
-                    // seek to start, write out the version
-                    ver.seek(0);
-                    ver.writeInt(SYNC_VERSION);
-                } while (false);
-            }
+                }
+                // seek to start, write out the version
+                ver.seek(0);
+                ver.writeInt(SYNC_VERSION);
+            } while (false);
         } catch (Throwable ignored) {
         }
 
@@ -463,14 +464,14 @@ public class ModelMapComponent extends AbstractMapComponent {
     static String getPointIconUri(Context ctx) {
         File f = new File(ctx.getCacheDir(), "icon_3d_map.png");
         if (!IOProviderFactory.exists(f)) {
-            try {
-                FileSystemUtils.copyStream(
-                        ctx.getResources()
-                                .openRawResource(R.drawable.icon_3d_map),
-                        true, IOProviderFactory.getOutputStream(f), true);
+            try(InputStream is = ctx.getResources()
+                        .openRawResource(R.drawable.icon_3d_map);
+                OutputStream os = IOProviderFactory.getOutputStream(f)) {
+                FileSystemUtils.copy(is, os);
             } catch (Throwable t) {
                 return "resource://" + R.drawable.icon_3d_map;
             }
+
         }
         return "file://" + f.getAbsolutePath();
     }

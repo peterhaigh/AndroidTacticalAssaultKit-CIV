@@ -25,6 +25,8 @@ import com.atakmap.coremap.log.Log;
 import com.foxykeep.datadroid.exception.ConnectionException;
 
 import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.UnknownServiceException;
 import java.util.UUID;
 
@@ -128,10 +130,9 @@ public class CopyAndSendTask extends MissionPackageBaseTask {
         }
 
         // now copy to deploy directory
-        try {
-            FileSystemUtils.copyStream(
-                    IOProviderFactory.getInputStream(source),
-                    IOProviderFactory.getOutputStream(_destination));
+        try(InputStream is = IOProviderFactory.getInputStream(source);
+            OutputStream os = IOProviderFactory.getOutputStream(_destination)) {
+            FileSystemUtils.copyStream(is, os);
         } catch (Exception e) {
             Log.w(TAG, "Failed to deploy (1) to: " + _destination, e);
             cancel("Failed to deploy "

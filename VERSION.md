@@ -1,8 +1,64 @@
 # Version History
 
+## 4.2.1.3
+
+* Fix KML rendering style issues with <GroundOverlay> elements
+
+## 4.2.1.2
+
+* Fix bug in `GLBatchPoint` with bad matrix pop. This issue would most commonly manifest with the 3D model indicator on screen.
+
+## 4.2.1.1
+
+* Fix reported issue with BP/HA placement
+* Align BP/HA dimension input with USMC doctrine
+* Update Mission Package Manager to store certs with connection vs defaults
+
+## 4.2.1.0
+
+* Add lasso tool to support region based imagery download
+* Add support for KML icon scaling
+* Sort icons by distance from camera to mitigate artifacts when map is tilted
+* Reset expiration on certificate when credentials are re-entered
+* Pull expiration from certificate if it's specified
+* Reimplement KML parsing for network link import
+* Fix GDAL band request parameters for monochrome imagery with alpha
+* Add additional vehicle models
+* Show nested child KML network links in Overlay Manager
+* Allow user to modify child KML network link download intervals
+* Handle KML altitude mode specified as `gx:altitudeMode` element
+* Add support for open polyline extrusions
+* Add extrusion support for negative heights (extrude down from base)
+* Various bug fixes
+
+## 4.2.0.5
+
+* Fix bug in `CommsMapComponent.removeOutputsChangedListener(...)`
+* Fix attach imave/video to marker from Downloads or Photos app
+
+## 4.2.0.4
+
+* Improve handling for KML PolyStyle with <fill>0</fill>
+
+## 4.2.0.3
+
+* Address various cases where streams may not be closed if exceptions are raised
+* Fix bug in 3D Tiles for bad bounding volume compute on Box or Sphere bounding volumes
+
+## 4.2.0.2
+
+* Address potential crash when receiving CoT shape with invalid points
+* Address potential crash when importing DTED without a file extension
+
+## 4.2.0.1
+
+* Fix crash for 32-bit hosts when trying to upload Data Package to TAK Server
+* Fix JNI local reference leak
+* Potential `NullPointerException` in `AppMgmtUtils`
+* Refactor logic in `MyPreferenceFragment` to avoid potential `NullPointerException`
+
 ## 4.2.0.0
 
-* Add helloworld example plugin to distribution.
 * ATAK CIV plugins are compatible with all variants of ATAK.
 * 3D Billboard Feature.  Marker image attachments can appear as 3D Billboards when navigating routes.
 * Point Dropper - 3D Vehicle Icons improvement. Higher contrast outlines are rendered around the icons in the point dropper selector.
@@ -12,8 +68,6 @@
 * Added DTED Data Manager.
 * Added GeoPDF support.
 * Upgrade to GDAL 2.4.4.
-* ASSIMP now included as tarball.
-* Upgraded to `atak-gradle-takdev` 2.0.0.
 * Various bug fixes
 
 ## 4.1.1.17

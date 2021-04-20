@@ -1228,9 +1228,8 @@ public class ATAKUtilities {
     public static Bitmap setIconFromFile(ImageView icon, File iconFile) {
         Bitmap bitmap = null;
         if (IOProviderFactory.exists(iconFile)) {
-            try {
-                BitmapFactory.decodeStream(
-                        IOProviderFactory.getInputStream(iconFile));
+            try(InputStream is = IOProviderFactory.getInputStream(iconFile)) {
+                BitmapFactory.decodeStream(is);
             } catch (IOException ioe) {
                 return null;
             } catch (RuntimeException ignored) {

@@ -30,6 +30,7 @@ import com.healthmarketscience.jackcess.DatabaseBuilder;
 import com.healthmarketscience.jackcess.Table;
 
 import java.io.File;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import com.atakmap.coremap.locale.LocaleUtil;
 
@@ -101,9 +102,9 @@ public class DrwFileDatabase extends
             return;
         Envelope.Builder bounds = new Envelope.Builder();
         Database msaccessDb = null;
-        try {
+        try(FileChannel channel = IOProviderFactory.getChannel(drwFile, "r")) {
             DatabaseBuilder db = new DatabaseBuilder();
-            db.setChannel(IOProviderFactory.getChannel(drwFile, "r"));
+            db.setChannel(channel);
             db.setReadOnly(true);
             msaccessDb = db.open();
             Table msaccessTable = msaccessDb.getTable("Main");

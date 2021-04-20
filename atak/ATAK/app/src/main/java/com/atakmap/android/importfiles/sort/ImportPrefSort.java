@@ -78,8 +78,8 @@ public class ImportPrefSort extends ImportInternalSDResolver {
             return false;
 
         // it is a .pref, now lets see if content inspection passes
-        try {
-            return isPreference(IOProviderFactory.getInputStream(file));
+        try(InputStream is = IOProviderFactory.getInputStream(file)) {
+            return isPreference(is);
         } catch (IOException e) {
             Log.e(TAG, "Failed to match Pref file: " + file.getAbsolutePath(),
                     e);
@@ -238,13 +238,14 @@ public class ImportPrefSort extends ImportInternalSDResolver {
      */
     private void writeDocumentToFile(Document doc, String filePath)
             throws Exception {
-        DOMSource source = new DOMSource(doc);
-        FileWriter writer = IOProviderFactory.getFileWriter(new File(filePath));
-        StreamResult result = new StreamResult(writer);
-        TransformerFactory transformerFactory = XMLUtils
-                .getTransformerFactory();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.transform(source, result);
+        try(FileWriter writer = IOProviderFactory.getFileWriter(new File(filePath))){
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(writer);
+            TransformerFactory transformerFactory = XMLUtils
+                    .getTransformerFactory();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.transform(source, result);
+        }
     }
 
     @Override

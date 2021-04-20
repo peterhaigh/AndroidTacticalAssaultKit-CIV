@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import com.atakmap.android.maps.MapView;
@@ -298,7 +299,13 @@ public class ImageFileContainer
                         });
 
                         removeSensorFOV();
-                        populateEXIFData(layout, bmpFile);
+                        final File fBmpFile = bmpFile;
+                        getMapView().post(new Runnable() {
+                            @Override
+                            public void run() {
+                                populateEXIFData(layout, fBmpFile);
+                            }
+                        });
                     }
                 }
             });
@@ -321,19 +328,13 @@ public class ImageFileContainer
     private static File readLink(File linkFile) {
         File link = null;
 
-        try {
-            BufferedReader br = new BufferedReader(
-                    new InputStreamReader(
-                            IOProviderFactory.getInputStream(linkFile)));
-
-            try {
-                String line = br.readLine();
-                if (line != null)
-                    link = new File(
-                            FileSystemUtils.sanitizeWithSpacesAndSlashes(line));
-            } finally {
-                br.close();
-            }
+        try(InputStream is = IOProviderFactory.getInputStream(linkFile);
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr)) {
+            String line = br.readLine();
+            if (line != null)
+                link = new File(
+                        FileSystemUtils.sanitizeWithSpacesAndSlashes(line));
         } catch (IOException ex) {
             Log.e(TAG, "error: ", ex);
         }

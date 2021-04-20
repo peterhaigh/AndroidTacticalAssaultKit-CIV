@@ -178,7 +178,6 @@ public class ImportDTEDZSort extends ImportInPlaceResolver {
 
     private boolean installDTED(File dtedFile) {
         byte[] buffer = new byte[4096];
-        FileOutputStream fos = null;
         String entry;
         boolean error = false;
         ZipInputStream zis = null;
@@ -194,7 +193,7 @@ public class ImportDTEDZSort extends ImportInPlaceResolver {
         Notification.Builder builder = NotificationUtil.getInstance()
                 .getNotificationBuilder(notificationId);
 
-        try {
+        try(InputStream is = IOProviderFactory.getInputStream(dtedFile)) {
             // create output directory is not exists
             File folder = FileSystemUtils
                     .getItem(FileSystemUtils.DTED_DIRECTORY);
@@ -204,9 +203,8 @@ public class ImportDTEDZSort extends ImportInPlaceResolver {
                 }
             }
 
-            InputStream in = IOProviderFactory.getInputStream(dtedFile);
             // get the zip file content
-            zis = new ZipInputStream(in);
+            zis = new ZipInputStream(is);
 
             // get the zipped file list entry
             java.util.zip.ZipEntry ze = zis.getNextEntry();
@@ -269,8 +267,8 @@ public class ImportDTEDZSort extends ImportInPlaceResolver {
                         Log.d(TAG, "could not make: " + newFile.getParent());
                     }
 
-                    try {
-                        fos = IOProviderFactory.getOutputStream(newFile);
+                    try(FileOutputStream fos = IOProviderFactory
+                            .getOutputStream(newFile)) {
 
                         int len;
                         while ((len = zis.read(buffer)) > 0) {
@@ -280,9 +278,6 @@ public class ImportDTEDZSort extends ImportInPlaceResolver {
                     } catch (IOException ex) {
                         // skip this file
                         Log.d(TAG, "error occurred during unzipping", ex);
-                    } finally {
-                        if (fos != null)
-                            fos.close();
                     }
                 }
                 //else {
